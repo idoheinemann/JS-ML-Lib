@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<!-- saved from url=(0054)http://idoheinemannsserver.web44.net/pacMan%20v3.0.php -->
+<html class="gr__idoheinemannsserver_web44_net"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+canvas {
+    border:1px solid #d3d3d3;
+    background-color: black;
+}
+body{
+	background-color: lightyellow;
+}
+</style>
+</head>
+<body onload="endGame('Start Game')">
+<canvas id="board"></canvas>
+<script src="linear_algebra.js"></script>
+<script src="neural_network.js"></script>
+<script src="image_proccess.js"></script>
+<script>
+
+var convlayers = [
+new ConvLayer((new Matrix([[-1,-1,-1]
+						 ,[-1,8,-1]
+						 ,[-1,-1,-1]])),relu2),
+new PullingLayer((img)=>{
+	var tmp = [];
+	for(var i = 0; i < img.rows ; i+=2){
+		tmp[i/2] = []
+		for(var j = 0; j < img.columns ; j+=2){
+			tmp[i/2][j/2] = img.submatrix(i,j,Math.min(i+1,img.rows),Math.min(j+1,img.columns)).max()
+		}
+	}
+	return new Matrix(tmp);
+})	 ,
+new ConvLayer(new Matrix([[0,-1,0]
+						,[-1,5,-1]
+						,[0,-1,0]]),relu2),
+new PullingLayer((img)=>{
+	var tmp = []
+	try{
+	for(var i = 0; i < img.rows ; i+=2){
+		tmp[i/2] = []
+		for(var j = 0; j < img.columns ; j+=2){
+			tmp[i/2][j/2] = img.submatrix(i,j,Math.min(i+1,img.rows),Math.min(j+1,img.columns)).max()
+		}
+	}}catch(e){console.log(i);console.log(j);debugger;}
+	return (new Matrix(tmp)).reshape(1,tmp.length*tmp[0].length);
+})	 
+];
+
+q_net = new ConvNet(convlayers,[1403,500,4],log_nonlin);
+
+var high = [0, 0, 0];
+var inGame = false;
+var players = [];
+var myScore;
+var world = -1;
+var disapered;
+var myObstacles = [];
+var coinsArr = [];
+var coins = 0;
+var W3 = [{"x":0,"y":0,"height":239,"width":40},{"x":1189,"y":0,"height":239,"width":40,"color":"#ff8000"},{"x":0,"y":343,"height":239,"width":40,"color":"#ff8000"},{"x":1189,"y":343,"height":239,"width":40,"color":"#ff8000"},{"x":0,"y":0,"height":29,"width":220,"color":"#ff8000"},{"x":1009,"y":0,"height":29,"width":220,"color":"#ff8000"},{"x":0,"y":553,"height":29,"width":220,"color":"#ff8000"},{"x":1009,"y":553,"height":29,"width":220,"color":"#ff8000"},{"x":353,"y":0,"height":26,"width":304,"color":"#ff8000"},{"x":572,"y":0,"height":26,"width":304,"color":"#ff8000"},{"x":353,"y":556,"height":26,"width":304,"color":"#ff8000"},{"x":572,"y":556,"height":26,"width":304,"color":"#ff8000"},{"x":154,"y":112,"height":73,"width":109,"color":"#ff8000"},{"x":966,"y":112,"height":73,"width":109,"color":"#ff8000"},{"x":154,"y":397,"height":73,"width":109,"color":"#ff8000"},{"x":966,"y":397,"height":73,"width":109,"color":"#ff8000"},{"x":384,"y":215,"height":23,"width":42,"color":"#ff8000"},{"x":803,"y":215,"height":23,"width":42,"color":"#ff8000"},{"x":384,"y":344,"height":23,"width":42,"color":"#ff8000"},{"x":803,"y":344,"height":23,"width":42,"color":"#ff8000"},{"x":116,"y":271,"height":37,"width":19,"color":"#ff8000"},{"x":1094,"y":271,"height":37,"width":19,"color":"#ff8000"},{"x":316,"y":68,"height":16,"width":10,"color":"#ff8000"},{"x":903,"y":68,"height":16,"width":10,"color":"#ff8000"},{"x":316,"y":498,"height":16,"width":10,"color":"#ff8000"},{"x":903,"y":498,"height":16,"width":10,"color":"#ff8000"},{"x":487,"y":119,"height":59,"width":233,"color":"#ff8000"},{"x":487,"y":404,"height":59,"width":233,"color":"#ff8000"},{"x":244,"y":265,"height":59,"width":31,"color":"#ff8000"},{"x":954,"y":265,"height":59,"width":31,"color":"#ff8000"},{"x":576,"y":9,"height":135,"width":49,"color":"#ff8000"},{"x":576,"y":438,"height":135,"width":49,"color":"#ff8000"}];
+var W2 = [{"x":0,"y":0,"height":225,"width":33},{"x":1196,"y":0,"height":225,"width":33,"color":"#ff8000"},{"x":0,"y":357,"height":225,"width":33,"color":"#ff8000"},{"x":1196,"y":357,"height":225,"width":33,"color":"#ff8000"},{"x":0,"y":0,"height":32,"width":235,"color":"#ff8000"},{"x":994,"y":0,"height":32,"width":235,"color":"#ff8000"},{"x":0,"y":550,"height":32,"width":235,"color":"#ff8000"},{"x":994,"y":550,"height":32,"width":235,"color":"#ff8000"},{"x":319,"y":0,"height":33,"width":355,"color":"#ff8000"},{"x":555,"y":0,"height":33,"width":355,"color":"#ff8000"},{"x":319,"y":549,"height":33,"width":355,"color":"#ff8000"},{"x":555,"y":549,"height":33,"width":355,"color":"#ff8000"},{"x":117,"y":97,"height":62,"width":69,"color":"#ff8000"},{"x":1043,"y":97,"height":62,"width":69,"color":"#ff8000"},{"x":117,"y":423,"height":62,"width":69,"color":"#ff8000"},{"x":1043,"y":423,"height":62,"width":69,"color":"#ff8000"},{"x":305,"y":246,"height":83,"width":54,"color":"#ff8000"},{"x":870,"y":246,"height":83,"width":54,"color":"#ff8000"},{"x":459,"y":412,"height":55,"width":271,"color":"#ff8000"},{"x":459,"y":115,"height":55,"width":271,"color":"#ff8000"},{"x":152,"y":250,"height":72,"width":25,"color":"#ff8000"},{"x":1052,"y":250,"height":72,"width":25,"color":"#ff8000"},{"x":264,"y":81,"height":25,"width":26,"color":"#ff8000"},{"x":939,"y":81,"height":25,"width":26,"color":"#ff8000"},{"x":264,"y":476,"height":25,"width":26,"color":"#ff8000"},{"x":939,"y":476,"height":25,"width":26,"color":"#ff8000"},{"x":822,"y":146,"height":36,"width":34,"color":"#ff8000"},{"x":373,"y":146,"height":36,"width":34,"color":"#ff8000"},{"x":822,"y":400,"height":36,"width":34,"color":"#ff8000"},{"x":373,"y":400,"height":36,"width":34,"color":"#ff8000"}]
+var W1 = [{"x":0,"y":0,"height":252,"width":25},{"x":1204,"y":0,"height":252,"width":25},{"x":0,"y":330,"height":252,"width":25},{"x":1204,"y":330,"height":252,"width":25},{"x":0,"y":545,"height":44,"width":539},{"x":690,"y":545,"height":44,"width":539},{"x":0,"y":-7,"height":44,"width":539},{"x":690,"y":-7,"height":44,"width":539},{"x":136,"y":120,"height":20,"width":235},{"x":858,"y":120,"height":20,"width":235},{"x":136,"y":442,"height":20,"width":235},{"x":858,"y":442,"height":20,"width":235},{"x":351,"y":122,"height":119,"width":15},{"x":863,"y":122,"height":119,"width":15},{"x":351,"y":341,"height":119,"width":15},{"x":863,"y":341,"height":119,"width":15},{"x":205,"y":211,"height":133,"width":31},{"x":993,"y":211,"height":133,"width":31},{"x":205,"y":238,"height":133,"width":31},{"x":993,"y":238,"height":133,"width":31},{"x":585,"y":97,"height":40,"width":38},{"x":585,"y":445,"height":40,"width":38},{"x":742,"y":390,"height":72,"width":13},{"x":474,"y":390,"height":72,"width":13},{"x":742,"y":120,"height":72,"width":13},{"x":474,"y":120,"height":72,"width":13},{"x":435,"y":232,"height":83,"width":8},{"x":786,"y":232,"height":83,"width":8},{"x":916,"y":284,"height":17,"width":14},{"x":299,"y":284,"height":17,"width":14},{"x":98,"y":271,"height":47,"width":19},{"x":1112,"y":271,"height":47,"width":19},{"x":24,"y":34,"height":45,"width":39},{"x":1166,"y":34,"height":45,"width":39},{"x":24,"y":503,"height":45,"width":39},{"x":1166,"y":503,"height":45,"width":39}];
+var relesed = 1;
+var canvas = document.getElementById("board");
+canvas.width = 1229;
+canvas.height = 582;
+var keys = [];
+var ctx = canvas.getContext("2d");
+var frameNo = 1;
+var stopped = false;
+var interval;
+var frameNoSince = 1;
+var WorldsArr = [function(){
+		myObstacles[0] = new component(172, 5, "orange", 528, 258);
+		myObstacles[1] = new component(5, 57, "orange", 528, 259);
+		myObstacles[2] = new component(172, 5, "orange", 528, 316);
+		myObstacles[3] = new component(5, 57, "orange", 695, 259);
+		for(i in W1){
+			myObstacles.push(new component(W1[i].width, W1[i].height, "orange", W1[i].x, W1[i].y));
+		}
+		players[1] = new component(27, 27, "red", 545, 273);
+		players[1].speed = 8;
+		players[2] = new component(27, 27, "blue", 603, 273);
+		players[2].speed = 6;
+		players[3] = new component(27, 27, "darkorange", 660, 273);
+		players[3].speed = 4;
+	},
+	function(){
+		myObstacles[0] = new component(182, 5, "orange", 518, 258);
+		myObstacles[1] = new component(5, 57, "orange", 518, 259);
+		myObstacles[2] = new component(182, 5, "orange", 518, 316);
+		myObstacles[3] = new component(5, 57, "orange", 695, 259);
+		for(i in W2){
+			myObstacles.push(new component(W2[i].width, W2[i].height, "orange", W2[i].x, W2[i].y));
+		}
+		players[1] = new component(27, 27, "red", 530, 273);
+		players[1].speed = 8;
+		players[2] = new component(27, 27, "blue", 575, 273);
+		players[2].speed = 6;
+		players[3] = new component(27, 27, "darkorange", 620, 273);
+		players[3].speed = 4;
+		players[4] = new component(27, 27, "purple", 665, 273)
+		players[4].speed = 2;
+	},
+	function(){
+		myObstacles[0] = new component(182, 5, "orange", 518, 258);
+		myObstacles[1] = new component(5, 57, "orange", 518, 259);
+		myObstacles[2] = new component(182, 5, "orange", 518, 316);
+		myObstacles[3] = new component(5, 57, "orange", 695, 259);
+		for(i in W3){
+			myObstacles.push(new component(W3[i].width, W3[i].height, "orange", W3[i].x, W3[i].y));
+		}
+		players[1] = new component(27, 27, "red", 530, 273);
+		players[1].speed = 8;
+		players[2] = new component(27, 27, "blue", 575, 273);
+		players[2].speed = 6;
+		players[3] = new component(27, 27, "darkorange", 620, 273);
+		players[3].speed = 4;
+		players[4] = new component(27, 27, "purple", 665, 273)
+		players[4].speed = 2;
+	}
+]
+function startGame(){
+	if(world==WorldsArr.length){world=0}
+	inGame = true;
+	canvas.style.cursor = "default";
+    players[0] = new component(27, 27, "green", parseInt(canvas.width/100), parseInt(canvas.height/2));
+    myScore = new component("30px", "Consolas", "white", canvas.width - 200, 40, "text");
+	WorldsArr[world]();
+	greenRect = new component(myObstacles[0].width-2, myObstacles[1].height+1, "darkgreen", myObstacles[2].x+1, myObstacles[3].y+1)
+	players[0].enabledMovemont = true;
+	coins = 0;
+	for(var x = parseInt(canvas.width / 31), coin = 0; x < parseInt(canvas.width - (canvas.width/31)); x += parseInt(canvas.width/31)){
+		for(var y = parseInt(canvas.height/11); y < parseInt(canvas.height - (canvas.height/11)); y+=parseInt(canvas.height/11)){
+			coinsArr[coin] = new circle(x, y, "yellow", 6);
+			coinsArr[coin].update();
+			(function(){for(n in players){
+				if(coinsArr[coin].crashWith(players[n])){
+					coinsArr.splice(coin, 1);
+					return;
+				}
+			}
+			for(n in myObstacles){
+				if(coinsArr[coin].crashWith(myObstacles[n])){
+					coinsArr.splice(coin, 1);
+					return;
+				}
+			}
+			if(coinsArr[coin].crashWith(greenRect)){
+				coinsArr.splice(coin, 1);
+				return;
+			}
+			coin+=1;})();
+		}
+	}
+    interval = setInterval(updateGameArea, 5);
+}
+function reset(){
+	players = [];
+	myScore = null;
+	myObstacles = [];
+	coinsArr = [];
+	keys = [];
+	frameNo = 1;
+	stopped = false;
+	relesed = 1;
+	inside = false;
+	frameNoSince = 1;
+}
+function getMousePos(event) {
+    var rect = canvas.getBoundingClientRect();
+    return {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top,
+		width: 0,
+		height: 0
+    };
+}
+function pressed(event, canvasObj){
+	if(canvasObj.crashWith(getMousePos(event))){canvasObj.action();}
+}
+function clear() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+function stop() {
+    clearInterval(interval);
+}
+function component(width, height, color, x, y, type) {
+    this.type = type;
+    this.width = width;
+    this.height = height;
+    this.speedX = 0;
+    this.speedY = 0;    
+    this.x = x;
+    this.y = y;
+	this.color = color;
+	this.enabledMovemont = false;
+	this.relativeLoc = {up:false, down:false, left:false, right:false},
+    this.update = function() {
+		for(n in this.relativeLoc){this.relativeLoc[n] = false;}
+        if (this.type == "text") {
+            ctx.font = this.width + " " + this.height;
+            ctx.fillStyle = this.color;
+            ctx.fillText(this.text, this.x, this.y);
+        } else {
+            ctx.fillStyle = color;
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+        }
+    }
+    this.newPos = function(){ 
+		if(this.enabledMovemont){
+			this.left = true;
+			this.right = true;
+			this.up = true;
+			this.down = true;
+			if(this.x + this.width == 0){this.x = canvas.width}
+			else if(this.x == canvas.width){this.x = 0 - this.width}
+			if(this.y == canvas.height){this.y = 0 - this.height}
+			else if(this.y + this.height == 0){this.y = canvas.height}
+			this.x += this.speedX;
+			this.y += this.speedY;        
+		}
+	}
+    this.crashWith = function(otherobj) {
+        var myleft = this.x;
+		var myright = this.x + this.width;
+        var mytop = (type=="text")?422: this.y;
+        var mybottom = (type == "text")?522 :this.y+this.height;
+        var otherleft = otherobj.x;
+        var otherright = otherobj.x + (otherobj.width);
+        var othertop = otherobj.y;
+        var otherbottom = otherobj.y + (otherobj.height);
+		var i;
+		var n;
+		var obj;
+		var obj1;
+		if (mybottom < othertop || mytop > otherbottom || myright < otherleft || myleft > otherright) {
+			return false;
+		}
+		if(myright == otherleft){this.relativeLoc.left = true}
+		if(myleft == otherright){this.relativeLoc.right = true}
+		if(mybottom == othertop){this.relativeLoc.up = true}
+		if(mytop == otherbottom){this.relativeLoc.down = true}
+		return true;
+    }
+}
+function circle(x, y, color, radius){ 
+    this.x = x;
+    this.y = y;
+	this.radius = radius;
+    this.update = function() {
+		ctx.beginPath();
+        ctx.fillStyle = color;
+        ctx.arc(this.x, this.y, this.radius, 0, 2*Math.PI);
+		ctx.fill();
+    }
+    this.crashWith = function(otherobj){
+		var myleft = this.x-this.radius;
+        var myright = this.x+this.radius;
+        var mytop = this.y-this.radius;
+        var mybottom = this.y+this.radius;
+        var otherleft = otherobj.x;
+        var otherright = otherobj.x+otherobj.width;
+        var othertop = otherobj.y;
+        var otherbottom = otherobj.y+otherobj.height;
+		if (mybottom < othertop || mytop > otherbottom || myright < otherleft || myleft > otherright) {
+			return false;
+		}
+		return true;
+	}
+}
+function checkValLoc(){
+	for(var i = 0; i<relesed; i++){
+		if(players[i].crashWith(greenRect)){return false;}
+	}
+	return true;
+}
+function updateGameArea(){
+	
+	var prevScore = coins;
+	
+	clear();
+	for(var i = 1; i!=players.length; i++){
+		if(players[i].crashWith(players[0])){
+			endGame("Game Over")
+			return;
+		}
+	}
+	for(i in players){
+		for(n in myObstacles){
+			players[i].crashWith(myObstacles[n]);
+			if(players[i].relativeLoc.up){players[i].down = false}
+			if(players[i].relativeLoc.down){players[i].up = false}
+			if(players[i].relativeLoc.right){players[i].left = false}
+			if(players[i].relativeLoc.left){players[i].right = false}
+		}
+	}
+	for(i in players){
+		for(n in players){
+			if(n==i){continue;}
+			players[i].crashWith(players[n]);
+			if(players[i].relativeLoc.up){players[i].down = false}
+			if(players[i].relativeLoc.down){players[i].up = false}
+			if(players[i].relativeLoc.right){players[i].left = false}
+			if(players[i].relativeLoc.left){players[i].right = false}
+		}
+	}
+	for(var i = 0; i != coinsArr.length; i++){
+		coinsArr[i].update();
+		if(coinsArr[i].crashWith(players[0])){
+			coins++;
+			coinsArr.splice(i, 1);
+			i--;
+		}
+	}
+	if(coinsArr.length == 0){
+		endGame(world==WorldsArr.length-1?"You Won":"Next Level");
+		return;
+	}
+	for(i in players){
+		players[i].speedX = 0;
+		players[i].speedY = 0;
+	}
+	if(players[0].left && keys[37]){players[0].speedX = -1;}
+	if(players[0].right && keys[39]){players[0].speedX = 1;}
+	if(players[0].up && keys[38]){players[0].speedY = -1;}
+	if(players[0].down && keys[40]){players[0].speedY = 1;}
+	if ((frameNoSince % 2000) == 0 && relesed<players.length){
+		players[relesed].enabledMovemont = true;
+		disapered = myObstacles.splice(0, 1)[0];
+		relesed++;
+		frameNoSince+=1;
+	}
+	if(checkValLoc() && (frameNoSince%2000)!=0){
+		if(disapered != null){
+			myObstacles.unshift(disapered);
+			disapered = null;
+		}
+		frameNoSince+=1;
+	}
+	for(var i = 1; i!=players.length;i++){
+		if((frameNo % players[i].speed) == 0){
+			if(players[i].left && players[0].x < players[i].x){players[i].speedX = -1;}
+			if(players[i].right && players[0].x > players[i].x){players[i].speedX = 1;}
+			if(players[i].crashWith(greenRect) || players[i].up && players[0].y < players[i].y){players[i].speedY = -1;}
+			else if(players[i].down && players[0].y > players[i].y){players[i].speedY = 1;}
+		}
+	}
+    frameNo += 1;
+	greenRect.update();
+	for(var i in myObstacles){
+		myObstacles[i].update();
+	}
+	myScore.text="COINS: " + coins;
+    myScore.update();
+	for(var i in players){
+		players[i].newPos();    
+		players[i].update();
+	}
+	var mt = ctx.getImageData(0,0,canvas.width,canvas.height);
+	mt = toMatrixArray(mt);
+	mt.pop()
+	mt = toGrayScale(mt)
+	mt = resize(mt,250,100)
+	
+	for(var i in mt.raw_mat){
+		for(var j in mt.raw_mat[i]){
+			ctx.fillStyle = "rgb("+mt.raw_mat[i][j]+","+mt.raw_mat[i][j]+","+mt.raw_mat[i][j]+")";
+			ctx.fillRect(j,i,2,2);
+		}
+	}
+	
+	mt = q_net.conv([mt])
+	
+	
+	return [mt,coins-prevScore];
+}
+function onReseth(event){
+	if(resquare.crashWith(getMousePos(event))){
+		canvas.style.cursor = "pointer";
+		restart.color = "lightgreen";
+		restart.update();
+	}
+	else{
+		canvas.style.cursor = "default";
+		restart.color = "green";
+		restart.update();
+	}
+}
+function onResetc(event){
+	pressed(event, resquare);
+}
+function getTextLoc(comp){
+	comp.update();
+	clear()
+	comp.x = parseInt(canvas.width/2) - parseInt(ctx.measureText(comp.text).width/2);
+	comp.update();
+}
+function endGame(win){
+	stop();
+	var ww;
+	if(coins>high[world]){high[world]=coins}
+	if(win=="Game Over"){restart.text = "↻"; ww=world}
+	else{restart.text = "▶";ww=world++;}
+	inGame = false;
+	var gameOver = new component("160px", "Consolas", "white", 274, 200, "text");
+	gameOver.text = win;
+	getTextLoc(gameOver);
+	var collected = new component("40px", "Consolas", "white", canvas.width/2-550, 350, "text");
+	collected.text = "You Collected "+coins+" COINS";
+	collected.update();
+	var highs = new component("40px", "Consolas", "white", canvas.width-349, 350, "text");
+	highs.text = "High Score: "+((high[ww])?high[ww]:0);
+	highs.update();
+	restart.update();
+	canvas.addEventListener("click", onResetc);
+	canvas.addEventListener("mousemove", onReseth);
+}
+var resquare = new component(81, 100,null,572, 425);
+var restart = new component("100px", "Ariel", "green", 564, 500, "text");
+resquare.action = function(){
+	canvas.removeEventListener("click", onResetc);
+	canvas.removeEventListener("mousemove", onReseth);
+	restart.color = "green";
+	reset();
+	startGame();
+}
+function pause(event){
+	if(inGame){
+		if(event.keyCode == 32 && stopped){
+			interval = setInterval(updateGameArea, 5);
+			stopped = false;
+		}
+		else if(event.keyCode == 32){
+			stop();
+			stopped = true;
+			var pausedScreen = new component("30px", "Consolas", "white",canvas.width/2-49,canvas.height/2+10, "text");
+			pausedScreen.text = "PAUSED";
+			pausedScreen.update();
+		}
+	}
+};
+window.addEventListener('keydown', function (e) {
+	keys[e.keyCode] = true;
+});
+window.addEventListener('keypress', pause);
+window.addEventListener('keyup', function (e) {
+    keys[e.keyCode] = false;            
+});
+</script>
+</body></html>

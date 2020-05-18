@@ -1,0 +1,29 @@
+<script src="linear_algebra.js"></script>
+<script src="neural_network.js"></script>
+<script>
+x = new Matrix([
+[0,0],
+[0,1],
+[1,0],
+[1,1]
+])
+y = (new Matrix([[0,1,1,0]])).T
+
+nn = new NeuralNetwork([2,4,1],(x,d)=>{
+	if(d){
+		return x.times(x.times(-1).plus(1));
+	}
+	return x.func((v)=>1/(1+Math.exp(-v)));
+});
+
+print = console.log;
+print(nn.hypot(x))
+for(var i = 0 ; i != 20000; i++){
+	nn.iteration(x,nn.hypot(x),1);
+}
+print(nn.hypot(x))
+for(var i = 0 ; i != 20000; i++){
+	nn.iteration(x,y,1);
+}
+print(nn.hypot(x))
+</script>
